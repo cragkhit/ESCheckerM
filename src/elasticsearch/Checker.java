@@ -67,6 +67,7 @@ public class Checker {
 	}
 	
 	private static void addToHitMap(ArrayList<String> hits) {
+		// System.out.println("Adding to hitMap: " + hits.size());
 		for (String hit: hits) {
 			// not found in the map before
 			if (hitMap.get(hit) == null) {
@@ -76,6 +77,48 @@ public class Checker {
 				hitMap.replace(hit, freq+1);
 			}
 		}
+		// System.out.println("=======================");
+		// printHitMap();
+	}
+	
+	private static ArrayList<String> getTopNFromHitMap(int n) {
+		ArrayList<HitEntry> sortedList = new ArrayList<HitEntry>();
+		ArrayList<String> resultList = new ArrayList<String>();
+		
+		Iterator<Entry<String, Integer>> it = hitMap.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<String, Integer> pair = (Map.Entry<String, Integer>) it.next();
+			HitEntry he = new HitEntry(pair.getKey(), pair.getValue());
+			// System.out.println("Hit: " + he.getFile() + ":" + he.getFrequency());
+			// add to the sorted list (desc)
+			if (sortedList.isEmpty()) {
+				sortedList.add(he);
+				// System.out.println("Added " + he.getFile() + ":" + he.getFrequency());
+			} else {
+				boolean insert = false;
+				for (int i = 0; i < sortedList.size(); i++) {
+					if (he.getFrequency() > sortedList.get(i).getFrequency()) {
+						sortedList.add(i, he);
+						// System.out.println("Added at " + i + ": " + he.getFile() + ":" + he.getFrequency());
+						insert = true;
+						break;
+					}
+				}
+				if (!insert)
+					sortedList.add(he);
+			}
+		}
+		
+		for (int i = 0; i < sortedList.size(); i++) {
+			if (i<n)
+				resultList.add(sortedList.get(i).getFile());
+		}
+		
+		return resultList;
+	}
+	
+	private static void clearHitMap() {
+		hitMap.clear();
 	}
 
 	private static void printHitMap() {
@@ -90,13 +133,30 @@ public class Checker {
 	private static void search() throws Exception {
 		File folder = new File(inputFolder);
 		File[] listOfFiles = folder.listFiles();
+		String originalIndex = index;
 		for (int i = 0; i < listOfFiles.length; i++) {
 			String query = "";
 			System.err.println(i);
 			int[] modes = { Settings.Normalize.HI_NORM, Settings.Normalize.LO_NORM, Settings.Normalize.ESCAPE };
-			for (int j = 1; j < modes.length; j++) {
+			for (int j = 0; j < modes.length; j++) {
 				JavaTokenizer tokenizer = new JavaTokenizer(modes[j]);
-
+				
+				// create the right index name according to the mode
+				if (modes[j] == Settings.Normalize.ESCAPE) {
+					index = originalIndex + "_java";
+					isNgram = false;
+				}
+				else if (modes[j] == Settings.Normalize.HI_NORM) {
+					index = originalIndex + "_hi_default";
+					isNgram = false;
+				}
+				else if (modes[j] == Settings.Normalize.LO_NORM) {
+					index = originalIndex + "_lo_ngram_default";
+					isNgram = true;
+				}
+				
+				// System.out.println(index);
+					
 				if (modes[j] == Settings.Normalize.ESCAPE) {
 					try (BufferedReader br = new BufferedReader(new FileReader(listOfFiles[i].getAbsolutePath()))) {
 						String line;
@@ -122,13 +182,15 @@ public class Checker {
 				}
 
 				addToHitMap(es.search(index, type, query, isPrint, isDFS));
-
-				// int tp = findTP(es.search(index, type, query, isPrint,
-				// isDFS), listOfFiles[i].getName().split("\\$")[0]);
-				// System.out.println(listOfFiles[i].getName() + "," + tp);
 			}
-			
-			printHitMap();
+			// printHitMap();
+			// System.out.println("========================");
+			ArrayList<String> results = getTopNFromHitMap(10);
+			// System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>\n" + printArray(results, false));
+			int tp = findTP(results, listOfFiles[i].getName().split("\\$")[0]);
+			System.out.println(listOfFiles[i].getName() + "," + tp);
+			clearHitMap();
+			// printHitMap();
 		}
 	}
 
