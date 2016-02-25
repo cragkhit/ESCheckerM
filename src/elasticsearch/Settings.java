@@ -15,8 +15,8 @@ public class Settings {
 	}
 	
 	public class Score {
-		public static final int JAVA_WEIGHT = 3;
-		public static final int LO_NORM_NGRAM_WEIGHT = 5;
+		public static final int JAVA_WEIGHT = 1;
+		public static final int LO_NORM_NGRAM_WEIGHT = 3;
 		public static final int HI_NORM_NGRAM_WEIGHT = 2;
 	}
 	

@@ -76,6 +76,7 @@ public class Checker {
 		else if (mode == Settings.Normalize.HI_NORM) weight = Settings.Score.HI_NORM_NGRAM_WEIGHT;
 		else if (mode == Settings.Normalize.LO_NORM) weight = Settings.Score.LO_NORM_NGRAM_WEIGHT;
 		
+		int index = 1;
 		for (SearchHit hit: hits) {
 			// not found in the map before
 			if (hitMap.get(hit) == null) {
@@ -84,6 +85,7 @@ public class Checker {
 				Double freq = hitMap.get(hit);
 				hitMap.replace(hit.getId(), freq + (hit.getScore() * weight));
 			}
+			index++;
 		}
 		// System.out.println("=======================");
 		// printHitMap();
@@ -144,7 +146,8 @@ public class Checker {
 		String originalIndex = index;
 		for (int i = 0; i < listOfFiles.length; i++) {
 			System.err.println(i);
-			int[] modes = { Settings.Normalize.HI_NORM, Settings.Normalize.LO_NORM, Settings.Normalize.ESCAPE };
+			// int[] modes = { Settings.Normalize.HI_NORM, Settings.Normalize.LO_NORM, Settings.Normalize.ESCAPE };
+			int[] modes = { Settings.Normalize.HI_NORM, Settings.Normalize.LO_NORM };
 			for (int j = 0; j < modes.length; j++) {
 				JavaTokenizer tokenizer = new JavaTokenizer(modes[j]);
 				String query = "";
@@ -194,9 +197,10 @@ public class Checker {
 			}
 			// printHitMap();
 			// System.out.println("========================");
-			ArrayList<String> results = getTopNFromHitMap(10);
+			ArrayList<String> results = getTopNFromHitMap(20);
 			if (isPrint)
 				System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>\n" + printArray(results, false).replace(" ", "\n"));
+			results = getTopNFromHitMap(10);
 			int tp = findTP(results, listOfFiles[i].getName().split("\\$")[0]);
 			System.out.println(listOfFiles[i].getName() + "," + tp);
 			clearHitMap();

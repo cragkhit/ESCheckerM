@@ -38,13 +38,13 @@ public class ESConnector {
 		if (isDFS)
 			searchType = SearchType.DFS_QUERY_THEN_FETCH;
 		SearchResponse response = client.prepareSearch(index).setSearchType(searchType)
-				.setQuery(QueryBuilders.matchQuery("src", query)).setFrom(0).setSize(20).execute()
+				.setQuery(QueryBuilders.matchQuery("src", query)).setFrom(0).setSize(10).execute()
 				.actionGet();
 		SearchHit[] hits = response.getHits().getHits();
 		if (isPrint) System.out.println("=======================\nhits: " + hits.length);
 		int count = 0;
 		for (SearchHit hit : hits) {
-			if (count >= 20)
+			if (count >= 10)
 				break;
 			if (isPrint) System.out.println(hit.getId() + ", " + hit.getScore()); // prints out the id of the
 			// document
