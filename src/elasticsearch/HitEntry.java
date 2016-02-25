@@ -2,9 +2,9 @@ package elasticsearch;
 
 public class HitEntry {
 	private String file;
-	private int frequency;
+	private Double frequency;
 	
-	public HitEntry(String file, int frequency) {
+	public HitEntry(String file, Double frequency) {
 		this.file = file;
 		this.frequency = frequency;
 	}
@@ -17,11 +17,11 @@ public class HitEntry {
 		this.file = file;
 	}
 
-	public int getFrequency() {
+	public Double getFrequency() {
 		return frequency;
 	}
 
-	public void setFrequency(int frequency) {
+	public void setFrequency(Double frequency) {
 		this.frequency = frequency;
 	}
 }

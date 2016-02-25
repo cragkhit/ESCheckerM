@@ -14,6 +14,12 @@ public class Settings {
 		public static final int OFF = 0;
 	}
 	
+	public class Score {
+		public static final int JAVA_WEIGHT = 3;
+		public static final int LO_NORM_NGRAM_WEIGHT = 5;
+		public static final int HI_NORM_NGRAM_WEIGHT = 2;
+	}
+	
 	public static final boolean Newline = true;
 	public static final boolean NoNewline = true;
 }

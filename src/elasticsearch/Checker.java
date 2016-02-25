@@ -17,6 +17,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.elasticsearch.search.SearchHit;
 
 public class Checker {
 	private static ESConnector es;
@@ -31,7 +32,7 @@ public class Checker {
 	private static nGramGenerator ngen;
 	private static Options options = new Options();
 	private static boolean isDFS = false;
-	private static HashMap<String, Integer> hitMap = new HashMap<String, Integer>();
+	private static HashMap<String, Double> hitMap = new HashMap<String, Double>();
 
 	public static void main(String[] args) {
 		processCommandLine(args);
@@ -66,15 +67,22 @@ public class Checker {
 		return tp;
 	}
 	
-	private static void addToHitMap(ArrayList<String> hits) {
+	private static void addToHitMap(ArrayList<SearchHit> hits, int mode) {
 		// System.out.println("Adding to hitMap: " + hits.size());
-		for (String hit: hits) {
+
+		// calculate score for each type of layer 
+		double weight = 0;
+		if (mode == Settings.Normalize.ESCAPE) weight = Settings.Score.JAVA_WEIGHT;
+		else if (mode == Settings.Normalize.HI_NORM) weight = Settings.Score.HI_NORM_NGRAM_WEIGHT;
+		else if (mode == Settings.Normalize.LO_NORM) weight = Settings.Score.LO_NORM_NGRAM_WEIGHT;
+		
+		for (SearchHit hit: hits) {
 			// not found in the map before
 			if (hitMap.get(hit) == null) {
-				hitMap.put(hit, 1);
+				hitMap.put(hit.getId(), hit.getScore() * weight);
 			} else {
-				Integer freq = hitMap.get(hit);
-				hitMap.replace(hit, freq+1);
+				Double freq = hitMap.get(hit);
+				hitMap.replace(hit.getId(), freq + (hit.getScore() * weight));
 			}
 		}
 		// System.out.println("=======================");
@@ -85,9 +93,9 @@ public class Checker {
 		ArrayList<HitEntry> sortedList = new ArrayList<HitEntry>();
 		ArrayList<String> resultList = new ArrayList<String>();
 		
-		Iterator<Entry<String, Integer>> it = hitMap.entrySet().iterator();
+		Iterator<Entry<String, Double>> it = hitMap.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry<String, Integer> pair = (Map.Entry<String, Integer>) it.next();
+			Map.Entry<String, Double> pair = (Map.Entry<String, Double>) it.next();
 			HitEntry he = new HitEntry(pair.getKey(), pair.getValue());
 			// System.out.println("Hit: " + he.getFile() + ":" + he.getFrequency());
 			// add to the sorted list (desc)
@@ -122,9 +130,9 @@ public class Checker {
 	}
 
 	private static void printHitMap() {
-		Iterator<Entry<String, Integer>> it = hitMap.entrySet().iterator();
+		Iterator<Entry<String, Double>> it = hitMap.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry<String, Integer> pair = (Map.Entry<String, Integer>) it.next();
+			Map.Entry<String, Double> pair = (Map.Entry<String, Double>) it.next();
 			System.out.println(pair.getKey() + " = " + pair.getValue());
 			// it.remove();
 		}
@@ -135,20 +143,19 @@ public class Checker {
 		File[] listOfFiles = folder.listFiles();
 		String originalIndex = index;
 		for (int i = 0; i < listOfFiles.length; i++) {
-			String query = "";
 			System.err.println(i);
 			int[] modes = { Settings.Normalize.HI_NORM, Settings.Normalize.LO_NORM, Settings.Normalize.ESCAPE };
 			for (int j = 0; j < modes.length; j++) {
 				JavaTokenizer tokenizer = new JavaTokenizer(modes[j]);
-				
+				String query = "";
 				// create the right index name according to the mode
 				if (modes[j] == Settings.Normalize.ESCAPE) {
 					index = originalIndex + "_java";
 					isNgram = false;
 				}
 				else if (modes[j] == Settings.Normalize.HI_NORM) {
-					index = originalIndex + "_hi_default";
-					isNgram = false;
+					index = originalIndex + "_hi_ngram_default";
+					isNgram = true;
 				}
 				else if (modes[j] == Settings.Normalize.LO_NORM) {
 					index = originalIndex + "_lo_ngram_default";
@@ -158,6 +165,7 @@ public class Checker {
 				// System.out.println(index);
 					
 				if (modes[j] == Settings.Normalize.ESCAPE) {
+					// System.out.println(index + ", mode = " + modes[j]);
 					try (BufferedReader br = new BufferedReader(new FileReader(listOfFiles[i].getAbsolutePath()))) {
 						String line;
 						while ((line = br.readLine()) != null) {
@@ -176,17 +184,19 @@ public class Checker {
 						query = printArray(ngen.generateNGramsFromJavaTokens(tokens), false);
 					}
 				}
+				
 				if (isPrint) {
 					System.out.println(listOfFiles[i].getName());
 					System.out.println(query);
 				}
 
-				addToHitMap(es.search(index, type, query, isPrint, isDFS));
+				addToHitMap(es.search(index, type, query, isPrint, isDFS), modes[j]);
 			}
 			// printHitMap();
 			// System.out.println("========================");
 			ArrayList<String> results = getTopNFromHitMap(10);
-			// System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>\n" + printArray(results, false));
+			if (isPrint)
+				System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>\n" + printArray(results, false).replace(" ", "\n"));
 			int tp = findTP(results, listOfFiles[i].getName().split("\\$")[0]);
 			System.out.println(listOfFiles[i].getName() + "," + tp);
 			clearHitMap();
@@ -305,7 +315,7 @@ public class Checker {
 
 	private static void showHelp() {
 		HelpFormatter formater = new HelpFormatter();
-		formater.printHelp("java -jar checker.jar", options);
+		formater.printHelp("Checker Multi-layer Approach v (0.1)\njava -jar checker.jar", options);
 		System.exit(0);
 	}
 }
